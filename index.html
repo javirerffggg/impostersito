@@ -1,0 +1,2132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1c1c1e">
+    <meta name="description" content="Imposter Who? - Juego de deducción social con IA">
+    <title>Imposter Who?</title>
+    
+    <!-- PWA Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <style>
+        /* ===== VARIABLES Y TEMAS ===== */
+        :root {
+            --bg-primary: #1c1c1e;
+            --bg-secondary: rgba(42, 42, 45, 0.85);
+            --bg-secondary-opaque: #2a2a2d;
+            --text-primary: #e6e6e6;
+            --text-secondary: #8e8e93;
+            --accent-color: #0A84FF;
+            --accent-hover: #0066cc;
+            --success-color: #30d158;
+            --error-color: #ff453a;
+            --warning-color: #ffd60a;
+            --impostor-color: #ff3b30;
+            --civil-color: #34c759;
+            --detective-color: #0A84FF;
+            --glass-bg: rgba(42, 42, 45, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.2);
+        }
+
+        body.theme-light {
+            --bg-primary: #f0f0f0;
+            --bg-secondary: rgba(255, 255, 255, 0.85);
+            --bg-secondary-opaque: #ffffff;
+            --text-primary: #1c1c1e;
+            --text-secondary: #636366;
+            --accent-color: #0056b3;
+            --glass-bg: rgba(255, 255, 255, 0.85);
+        }
+
+        body.theme-neon {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: rgba(15, 15, 15, 0.8);
+            --bg-secondary-opaque: #0f0f0f;
+            --text-primary: #00FFFF;
+            --text-secondary: #FF00FF;
+            --accent-color: #FF00FF;
+            --glass-bg: rgba(15, 15, 15, 0.8);
+        }
+
+        body.theme-halloween {
+            --bg-primary: #1a0d00;
+            --accent-color: #ff6600;
+            --impostor-color: #ff0000;
+        }
+
+        body.theme-christmas {
+            --bg-primary: #0d1a0d;
+            --accent-color: #c41e3a;
+            --success-color: #228b22;
+        }
+
+        /* ===== RESET Y BASE ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text-primary);
+            background: var(--bg-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+            transition: background 0.5s ease;
+        }
+
+        /* Fondo con gradiente animado */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, 
+                rgba(10, 132, 255, 0.1) 0%, 
+                rgba(255, 45, 85, 0.1) 50%, 
+                rgba(191, 90, 242, 0.1) 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            z-index: -1;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        body.battery-saver::before {
+            animation: none;
+            background: var(--bg-primary);
+        }
+
+        body.grandma-mode {
+            font-size: 1.2em;
+        }
+
+        /* ===== LIQUID GLASS EFFECT ===== */
+        .liquid-glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 1rem;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            transition: all 0.3s ease;
+        }
+
+        body.battery-saver .liquid-glass {
+            backdrop-filter: none;
+            background: var(--bg-secondary-opaque);
+        }
+
+        body.theme-neon .liquid-glass {
+            text-shadow: 0 0 5px var(--accent-color);
+            box-shadow: 0 0 20px var(--accent-color);
+        }
+
+        /* ===== LAYOUT ===== */
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 1.5rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* ===== SECCIONES ANIMADAS ===== */
+        .section-to-animate {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease-out;
+        }
+
+        .section-to-animate.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ===== BOTONES ===== */
+        button {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(10, 132, 255, 0.3);
+        }
+
+        button:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(10, 132, 255, 0.4);
+        }
+
+        button:active {
+            transform: scale(0.95);
+            transition: transform 0.05s ease-out;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            box-shadow: none;
+        }
+
+        .btn-danger {
+            background: var(--error-color);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+        }
+
+        /* ===== INPUTS ===== */
+        input[type="text"] {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.2);
+        }
+
+        input[type="text"]::placeholder {
+            color: var(--text-secondary);
+        }
+
+        /* ===== TÍTULOS Y TEXTO ===== */
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--accent-color), var(--success-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        h2 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* ===== UTILITY CLASSES ===== */
+        .hidden {
+            display: none !important;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mb-1 { margin-bottom: 0.5rem; }
+        .mb-2 { margin-bottom: 1rem; }
+        .mb-3 { margin-bottom: 1.5rem; }
+        .mb-4 { margin-bottom: 2rem; }
+        .mt-2 { margin-top: 1rem; }
+        .mt-4 { margin-top: 2rem; }
+
+        .flex {
+            display: flex;
+        }
+
+        .flex-col {
+            flex-direction: column;
+        }
+
+        .items-center {
+            align-items: center;
+        }
+
+        .justify-between {
+            justify-content: space-between;
+        }
+
+        .gap-2 {
+            gap: 1rem;
+        }
+
+        /* ===== ANIMACIONES ===== */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .animate-shake {
+            animation: shake 0.3s ease;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .animate-pulse {
+            animation: pulse 2s ease infinite;
+        }
+
+        /* ===== TOAST ===== */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            padding: 1rem 2rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            z-index: 1000;
+            opacity: 0;
+            transition: all 0.3s ease;
+            max-width: 90%;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .toast.error {
+            background: var(--error-color);
+            color: white;
+        }
+
+        .toast.info {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .toast.warning {
+            background: var(--warning-color);
+            color: black;
+        }
+
+        /* ===== PARTÍCULAS ===== */
+        .particle {
+            position: fixed;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* ===== SPINNER ===== */
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--glass-border);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 2rem auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- TOAST -->
+    <div id="toast" class="toast liquid-glass"></div>
+
+    <!-- OFFLINE INDICATOR -->
+    <div id="offline-icon" class="hidden" style="position: fixed; top: 1rem; right: 1rem; background: var(--error-color); color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; z-index: 1000;">
+        📡 Sin conexión
+    </div>
+
+    <div class="container">
+        <!-- ===== PANTALLA: HOME ===== -->
+        <div id="screen-home" class="screen active">
+            <div class="text-center mb-4">
+                <h1>🕵️ Imposter Who?</h1>
+                <p class="mb-3">El juego de deducción social definitivo</p>
+            </div>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;">
+                <button onclick="showScreen('screen-game-mode')" style="width: 100%; margin-bottom: 1rem;">
+                    🎮 Jugar
+                </button>
+                <button onclick="showScreen('screen-stats')" class="btn-secondary" style="width: 100%; margin-bottom: 1rem;">
+                    📊 Estadísticas
+                </button>
+                <button onclick="showScreen('screen-settings')" class="btn-secondary" style="width: 100%;">
+                    ⚙️ Configuración
+                </button>
+            </div>
+
+            <div class="liquid-glass section-to-animate" style="padding: 1rem;">
+                <h3>✨ Características</h3>
+                <ul style="color: var(--text-secondary); padding-left: 1.5rem; line-height: 2;">
+                    <li>Escenarios generados por IA</li>
+                    <li>3-12 jugadores (modo local)</li>
+                    <li>Múltiples roles y estrategias</li>
+                    <li>Temas personalizables</li>
+                    <li>100% offline después de cargar</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ===== PANTALLA: SELECCIÓN DE MODO ===== -->
+        <div id="screen-game-mode" class="screen">
+            <button onclick="showScreen('screen-home')" class="btn-secondary mb-3">← Volver</button>
+            
+            <h2 class="text-center mb-3">Selecciona Modo de Juego</h2>
+
+            <div class="liquid-glass mb-2 section-to-animate" style="padding: 1.5rem; cursor: pointer;" onclick="selectGameMode('classic')">
+                <h3>🎯 Modo Clásico</h3>
+                <p>Todos reciben un rol en un escenario común. El impostor debe descubrir la ubicación sin ser detectado.</p>
+            </div>
+
+            <div class="liquid-glass mb-2 section-to-animate" style="padding: 1.5rem; cursor: pointer;" onclick="selectGameMode('detective')">
+                <h3>🔍 Modo Detective</h3>
+                <p>Un detective conoce todos los roles. Debe guiar a los civiles sin revelar demasiado.</p>
+            </div>
+
+            <div class="liquid-glass section-to-animate" style="padding: 1.5rem; cursor: pointer;" onclick="selectGameMode('chameleon')">
+                <h3>🦎 Modo Camaleón</h3>
+                <p>Todos conocen un tema excepto el camaleón, quien debe adivinar de qué se habla.</p>
+            </div>
+        </div>
+
+        <!-- ===== PANTALLA: CONFIGURACIÓN DE JUGADORES ===== -->
+        <div id="screen-players" class="screen">
+            <button onclick="showScreen('screen-game-mode')" class="btn-secondary mb-3">← Volver</button>
+            
+            <h2 class="text-center mb-3">Configurar Partida</h2>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Número de jugadores:</label>
+                <input type="range" id="player-count" min="3" max="12" value="5" 
+                    style="width: 100%; margin-bottom: 0.5rem;"
+                    oninput="updatePlayerCount(this.value)">
+                <div class="text-center" style="font-size: 2rem; font-weight: 700; color: var(--accent-color);" id="player-count-display">5</div>
+            </div>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;">
+                <h3 class="mb-2">Opciones de Partida</h3>
+                <div class="flex justify-between items-center mb-2" style="padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                    <span>Número de impostores:</span>
+                    <input type="number" id="impostor-count" min="1" max="3" value="1" style="width: 80px; padding: 0.5rem; text-align: center;">
+                </div>
+                <div class="flex justify-between items-center mb-2" style="padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                    <span>Tiempo de ronda (min):</span>
+                    <input type="number" id="round-time" min="3" max="15" value="5" style="width: 80px; padding: 0.5rem; text-align: center;">
+                </div>
+                <div class="flex justify-between items-center" style="padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem;">
+                    <span>Generación de escenario:</span>
+                    <select id="scenario-type" style="padding: 0.5rem; border-radius: 0.5rem; background: var(--glass-bg); color: var(--text-primary); border: 1px solid var(--glass-border);">
+                        <option value="ai">IA (Gemini)</option>
+                        <option value="preset">Predefinidos</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;" id="ai-options">
+                <h3 class="mb-2">🤖 Configuración de IA</h3>
+                <label style="display: block; margin-bottom: 0.5rem;">API Key de Gemini:</label>
+                <input type="text" id="gemini-api-key" placeholder="AIza..." style="margin-bottom: 1rem;">
+                <p style="font-size: 0.875rem; color: var(--text-secondary);">
+                    Consigue tu API key gratis en <a href="https://ai.google.dev/" target="_blank" style="color: var(--accent-color);">ai.google.dev</a>
+                </p>
+            </div>
+
+            <button onclick="startGame()" style="width: 100%;">▶️ Iniciar Partida</button>
+        </div>
+
+        <!-- ===== PANTALLA: DISTRIBUCIÓN DE ROLES ===== -->
+        <div id="screen-roles" class="screen">
+            <div class="text-center mb-4">
+                <h2>Distribución de Roles</h2>
+                <p>Cada jugador debe ver su rol en privado</p>
+            </div>
+
+            <div class="liquid-glass mb-3 text-center" style="padding: 2rem;">
+                <h1 style="font-size: 3rem;" id="current-player-number">1</h1>
+                <p style="font-size: 1.25rem; font-weight: 600;">Jugador</p>
+            </div>
+
+            <button onclick="revealRole()" id="reveal-role-btn" style="width: 100%; padding: 1.5rem; font-size: 1.25rem;">
+                👁️ Ver mi rol
+            </button>
+
+            <div id="role-display" class="hidden">
+                <div class="liquid-glass mb-3" style="padding: 2rem; text-align: center;">
+                    <div id="role-icon" style="font-size: 4rem; margin-bottom: 1rem;">👤</div>
+                    <h2 id="role-name" style="margin-bottom: 1rem;">Tu Rol</h2>
+                    <div id="role-info" style="font-size: 1.125rem; line-height: 1.8;"></div>
+                </div>
+                <button onclick="nextPlayer()" id="next-player-btn" style="width: 100%; padding: 1.5rem; font-size: 1.25rem;">
+                    ✅ Entendido, siguiente jugador
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== PANTALLA: JUEGO EN CURSO ===== -->
+        <div id="screen-game" class="screen">
+            <div class="flex justify-between items-center mb-3">
+                <button onclick="pauseGame()" class="btn-secondary">⏸️ Pausa</button>
+                <div class="liquid-glass" style="padding: 0.75rem 1.5rem; font-size: 1.5rem; font-weight: 700; color: var(--accent-color);" id="timer-display">
+                    5:00
+                </div>
+            </div>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;">
+                <h3 class="mb-2">📍 Información del Escenario</h3>
+                <div id="scenario-info" style="font-size: 1.125rem; line-height: 1.8; color: var(--text-secondary);">
+                    Cargando escenario...
+                </div>
+            </div>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;">
+                <h3 class="mb-2">👥 Jugadores Activos</h3>
+                <div id="players-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.5rem;">
+                    <!-- Los jugadores se añadirán dinámicamente -->
+                </div>
+            </div>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;">
+                <h3 class="mb-2">💡 Consejo Aleatorio</h3>
+                <p id="random-tip" style="font-style: italic; color: var(--text-secondary);">
+                    Observa el lenguaje corporal de los demás jugadores...
+                </p>
+            </div>
+
+            <button onclick="showScreen('screen-voting')" style="width: 100%;">
+                🗳️ Iniciar Votación
+            </button>
+        </div>
+
+        <!-- ===== PANTALLA: VOTACIÓN ===== -->
+        <div id="screen-voting" class="screen">
+            <h2 class="text-center mb-3">¿Quién es el impostor?</h2>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;">
+                <p class="text-center mb-3">Selecciona al jugador que crees que es el impostor:</p>
+                <div id="voting-players" style="display: grid; gap: 1rem;">
+                    <!-- Botones de votación se generarán aquí -->
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="showScreen('screen-game')" class="btn-secondary" style="flex: 1;">
+                    ← Volver al juego
+                </button>
+                <button onclick="showVotingResults()" class="btn-success" style="flex: 1;">
+                    ✅ Ver Resultados
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== PANTALLA: RESULTADOS ===== -->
+        <div id="screen-results" class="screen">
+            <div class="text-center mb-4">
+                <div id="result-icon" style="font-size: 5rem; margin-bottom: 1rem;">🎉</div>
+                <h1 id="result-title">¡Victoria!</h1>
+                <p id="result-subtitle" style="font-size: 1.25rem;">Los civiles han ganado</p>
+            </div>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;">
+                <h3 class="mb-2">📋 Resumen de la Partida</h3>
+                <div id="game-summary" style="color: var(--text-secondary); line-height: 2;">
+                    <!-- Resumen generado dinámicamente -->
+                </div>
+            </div>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;">
+                <h3 class="mb-2">🏆 Roles Revelados</h3>
+                <div id="roles-revealed" style="display: grid; gap: 0.5rem;">
+                    <!-- Lista de roles -->
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="showScreen('screen-home')" class="btn-secondary" style="flex: 1;">
+                    🏠 Inicio
+                </button>
+                <button onclick="restartGame()" style="flex: 1;">
+                    🔄 Nueva Partida
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== PANTALLA: ESTADÍSTICAS ===== -->
+        <div id="screen-stats" class="screen">
+            <button onclick="showScreen('screen-home')" class="btn-secondary mb-3">← Volver</button>
+            
+            <h2 class="text-center mb-3">📊 Tus Estadísticas</h2>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;">
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 2.5rem; font-weight: 700; color: var(--accent-color);" id="stat-games">0</div>
+                        <p style="font-size: 0.875rem;">Partidas</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 2.5rem; font-weight: 700; color: var(--success-color);" id="stat-wins">0</div>
+                        <p style="font-size: 0.875rem;">Victorias</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 2.5rem; font-weight: 700; color: var(--impostor-color);" id="stat-impostor">0</div>
+                        <p style="font-size: 0.875rem;">Veces Impostor</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 2.5rem; font-weight: 700; color: var(--detective-color);" id="stat-detective">0</div>
+                        <p style="font-size: 0.875rem;">Veces Detective</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;">
+                <h3 class="mb-2">🏆 Logros</h3>
+                <div id="achievements-list">
+                    <!-- Logros generados dinámicamente -->
+                </div>
+            </div>
+
+            <button onclick="resetStats()" class="btn-danger" style="width: 100%;">
+                🗑️ Borrar Estadísticas
+            </button>
+        </div>
+
+        <!-- ===== PANTALLA: CONFIGURACIÓN ===== -->
+        <div id="screen-settings" class="screen">
+            <button onclick="showScreen('screen-home')" class="btn-secondary mb-3">← Volver</button>
+            
+            <h2 class="text-center mb-3">⚙️ Configuración</h2>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;">
+                <h3 class="mb-2">🎨 Tema Visual</h3>
+                <select id="theme-selector" onchange="changeTheme(this.value)" style="width: 100%; padding: 1rem; border-radius: 0.75rem; background: var(--glass-bg); color: var(--text-primary); border: 1px solid var(--glass-border); font-size: 1rem;">
+                    <option value="dark">🌙 Oscuro (Predeterminado)</option>
+                    <option value="light">☀️ Claro</option>
+                    <option value="neon">⚡ Neón Cyberpunk</option>
+                    <option value="halloween">🎃 Halloween</option>
+                    <option value="christmas">🎄 Navidad</option>
+                </select>
+            </div>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;">
+                <h3 class="mb-2">🔊 Sonido</h3>
+                <div class="flex justify-between items-center mb-2">
+                    <span>Efectos de sonido:</span>
+                    <label style="position: relative; display: inline-block; width: 60px; height: 30px;">
+                        <input type="checkbox" id="sound-toggle" checked onchange="toggleSound(this.checked)" style="opacity: 0; width: 0; height: 0;">
+                        <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--text-secondary); border-radius: 30px; transition: 0.3s;"></span>
+                        <span style="position: absolute; content: ''; height: 22px; width: 22px; left: 4px; bottom: 4px; background: white; border-radius: 50%; transition: 0.3s;"></span>
+                    </label>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span>Volumen:</span>
+                    <input type="range" id="volume-slider" min="0" max="100" value="70" style="width: 150px;" oninput="changeVolume(this.value)">
+                </div>
+            </div>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;">
+                <h3 class="mb-2">♿ Accesibilidad</h3>
+                <div class="flex justify-between items-center mb-2">
+                    <span>Modo abuela:</span>
+                    <label style="position: relative; display: inline-block; width: 60px; height: 30px;">
+                        <input type="checkbox" id="grandma-toggle" onchange="toggleGrandmaMode(this.checked)" style="opacity: 0; width: 0; height: 0;">
+                        <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--text-secondary); border-radius: 30px; transition: 0.3s;"></span>
+                        <span style="position: absolute; content: ''; height: 22px; width: 22px; left: 4px; bottom: 4px; background: white; border-radius: 50%; transition: 0.3s;"></span>
+                    </label>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span>Ahorro de batería:</span>
+                    <label style="position: relative; display: inline-block; width: 60px; height: 30px;">
+                        <input type="checkbox" id="battery-toggle" onchange="toggleBatterySaver(this.checked)" style="opacity: 0; width: 0; height: 0;">
+                        <span style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: var(--text-secondary); border-radius: 30px; transition: 0.3s;"></span>
+                        <span style="position: absolute; content: ''; height: 22px; width: 22px; left: 4px; bottom: 4px; background: white; border-radius: 50%; transition: 0.3s;"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="liquid-glass mb-3" style="padding: 1.5rem;">
+                <h3 class="mb-2">ℹ️ Información</h3>
+                <p style="color: var(--text-secondary); line-height: 1.8;">
+                    <strong>Versión:</strong> 1.0.0<br>
+                    <strong>Creado por:</strong> Tu equipo de desarrollo<br>
+                    <strong>PWA:</strong> Instalable y offline
+                </p>
+            </div>
+
+            <button onclick="showTutorial()" class="btn-secondary" style="width: 100%; margin-bottom: 1rem;">
+                📖 Ver Tutorial
+            </button>
+
+            <button onclick="clearCache()" class="btn-danger" style="width: 100%;">
+                🗑️ Borrar Caché
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // ===== ESTADO GLOBAL DE LA APLICACIÓN =====
+        const GameState = {
+            currentScreen: 'screen-home',
+            gameMode: null,
+            players: [],
+            currentPlayerIndex: 0,
+            scenario: null,
+            impostors: [],
+            detective: null,
+            timer: null,
+            timeRemaining: 0,
+            votes: {},
+            stats: {
+                gamesPlayed: 0,
+                wins: 0,
+                impostorTimes: 0,
+                detectiveTimes: 0
+            },
+            settings: {
+                theme: 'dark',
+                soundEnabled: true,
+                volume: 70,
+                grandmaMode: false,
+                batterySaver: false
+            },
+            geminiApiKey: '',
+            isOnline: navigator.onLine
+        };
+
+        // ===== ESCENARIOS PREDEFINIDOS =====
+        const PRESET_SCENARIOS = {
+            classic: [
+                {
+                    location: "Aeropuerto Internacional",
+                    roles: [
+                        { name: "Piloto", description: "Capitán de un vuelo transatlántico" },
+                        { name: "Azafata", description: "Atiende a los pasajeros de primera clase" },
+                        { name: "Pasajero VIP", description: "Empresario con billetes de primera clase" },
+                        { name: "Personal de seguridad", description: "Revisa equipajes en el control" },
+                        { name: "Trabajador de duty-free", description: "Vende perfumes y licores" },
+                        { name: "Controlador aéreo", description: "Coordina el tráfico de aviones" },
+                        { name: "Personal de limpieza", description: "Mantiene las instalaciones limpias" },
+                        { name: "Agente de aduanas", description: "Inspecciona documentos de viajeros" }
+                    ],
+                    tips: [
+                        "Menciona detalles específicos del lugar",
+                        "Haz preguntas sobre el entorno",
+                        "Observa quién evita dar detalles concretos"
+                    ]
+                },
+                {
+                    location: "Hospital de emergencias",
+                    roles: [
+                        { name: "Cirujano", description: "Especialista en operaciones de urgencia" },
+                        { name: "Enfermera", description: "Coordina los cuidados de pacientes" },
+                        { name: "Paciente", description: "Ingresado por una fractura" },
+                        { name: "Anestesista", description: "Administra sedación en quirófano" },
+                        { name: "Paramédico", description: "Trae pacientes en ambulancia" },
+                        { name: "Recepcionista", description: "Gestiona ingresos y citas" },
+                        { name: "Farmacéutico", description: "Prepara medicamentos para pacientes" },
+                        { name: "Celador", description: "Transporta pacientes entre áreas" }
+                    ],
+                    tips: [
+                        "Describe tu actividad típica en el lugar",
+                        "Pregunta sobre procedimientos específicos",
+                        "Cuidado con quien generaliza demasiado"
+                    ]
+                },
+                {
+                    location: "Estudio de televisión",
+                    roles: [
+                        { name: "Presentador", description: "Conduce un programa matinal" },
+                        { name: "Cámara", description: "Opera la cámara principal del estudio" },
+                        { name: "Invitado famoso", description: "Actor promocionando una película" },
+                        { name: "Productor", description: "Coordina todo el show desde cabina" },
+                        { name: "Maquillador", description: "Prepara a los presentadores antes del aire" },
+                        { name: "Técnico de sonido", description: "Controla el audio del programa" },
+                        { name: "Guionista", description: "Escribe los textos del teleprompter" },
+                        { name: "Asistente de producción", description: "Coordina entradas y salidas" }
+                    ],
+                    tips: [
+                        "Habla sobre tu trabajo específico",
+                        "Pregunta sobre el programa en curso",
+                        "Nota quien evita mencionar detalles técnicos"
+                    ]
+                },
+                {
+                    location: "Crucero de lujo",
+                    roles: [
+                        { name: "Capitán", description: "Comandante del barco" },
+                        { name: "Chef ejecutivo", description: "Dirige las cocinas del crucero" },
+                        { name: "Animador", description: "Organiza actividades para pasajeros" },
+                        { name: "Pasajero", description: "Turista disfrutando de las vacaciones" },
+                        { name: "Camarero", description: "Sirve bebidas en la cubierta" },
+                        { name: "Personal de spa", description: "Ofrece masajes y tratamientos" },
+                        { name: "Músico", description: "Toca en el piano bar nocturno" },
+                        { name: "Guía de excursiones", description: "Organiza las visitas a puertos" }
+                    ],
+                    tips: [
+                        "Describe las áreas del barco",
+                        "Comenta sobre las actividades diarias",
+                        "Observa quien evita hablar de ubicaciones específicas"
+                    ]
+                },
+                {
+                    location: "Museo de arte",
+                    roles: [
+                        { name: "Curador", description: "Especialista en arte renacentista" },
+                        { name: "Guía turístico", description: "Explica las obras a los visitantes" },
+                        { name: "Visitante", description: "Amante del arte admirando las pinturas" },
+                        { name: "Restaurador", description: "Repara obras antiguas dañadas" },
+                        { name: "Vigilante de seguridad", description: "Protege las obras de arte" },
+                        { name: "Vendedor de tienda", description: "Vende souvenirs y catálogos" },
+                        { name: "Fotógrafo oficial", description: "Documenta las exposiciones" },
+                        { name: "Estudiante de arte", description: "Dibuja las esculturas para clase" }
+                    ],
+                    tips: [
+                        "Menciona obras o artistas específicos",
+                        "Habla sobre las salas del museo",
+                        "Detecta respuestas vagas sobre el arte"
+                    ]
+                },
+                {
+                    location: "Estación espacial",
+                    roles: [
+                        { name: "Comandante", description: "Lidera la tripulación de la estación" },
+                        { name: "Astronauta científico", description: "Realiza experimentos en microgravedad" },
+                        { name: "Ingeniero de sistemas", description: "Mantiene los sistemas vitales funcionando" },
+                        { name: "Médico espacial", description: "Monitorea la salud de la tripulación" },
+                        { name: "Piloto de cápsula", description: "Opera las naves Soyuz de transporte" },
+                        { name: "Especialista en comunicaciones", description: "Mantiene contacto con la Tierra" },
+                        { name: "Biólogo", description: "Estudia el crecimiento de plantas en el espacio" },
+                        { name: "Operador robótico", description: "Controla el brazo mecánico exterior" }
+                    ],
+                    tips: [
+                        "Describe tu módulo de trabajo",
+                        "Habla sobre los efectos de la microgravedad",
+                        "Cuestiona quien no conoce términos básicos espaciales"
+                    ]
+                }
+            ],
+            detective: [
+                {
+                    location: "Casino de Las Vegas",
+                    theme: "Robo de dinero",
+                    roles: [
+                        { name: "Crupier", description: "Reparte cartas en la mesa de póker" },
+                        { name: "Guardia de seguridad", description: "Vigila las cámaras del casino" },
+                        { name: "Jugador profesional", description: "Apuesta grandes sumas en ruleta" },
+                        { name: "Gerente del casino", description: "Supervisa todas las operaciones" },
+                        { name: "Camarera", description: "Sirve bebidas gratis a los jugadores" },
+                        { name: "Técnico de máquinas", description: "Repara las tragaperras" }
+                    ]
+                },
+                {
+                    location: "Mansión victoriana",
+                    theme: "Asesinato misterioso",
+                    roles: [
+                        { name: "Mayordomo", description: "Sirve al señor de la casa" },
+                        { name: "Heredera", description: "Sobrina del difunto propietario" },
+                        { name: "Doctor", description: "Médico de la familia" },
+                        { name: "Chef", description: "Prepara banquetes elegantes" },
+                        { name: "Jardinero", description: "Cuida los terrenos de la propiedad" },
+                        { name: "Abogado", description: "Gestor del testamento familiar" }
+                    ]
+                }
+            ],
+            chameleon: [
+                {
+                    topic: "Películas de superhéroes",
+                    keywords: ["Marvel", "DC", "Vengadores", "Batman", "Spider-Man", "Superman", "Iron Man", "Thor"]
+                },
+                {
+                    topic: "Deportes populares",
+                    keywords: ["Fútbol", "Baloncesto", "Tenis", "Natación", "Atletismo", "Ciclismo", "Boxeo", "Golf"]
+                },
+                {
+                    topic: "Comida italiana",
+                    keywords: ["Pizza", "Pasta", "Lasaña", "Risotto", "Tiramisú", "Carbonara", "Parmesano", "Espagueti"]
+                },
+                {
+                    topic: "Instrumentos musicales",
+                    keywords: ["Guitarra", "Piano", "Batería", "Violín", "Trompeta", "Saxofón", "Flauta", "Bajo"]
+                },
+                {
+                    topic: "Países europeos",
+                    keywords: ["España", "Francia", "Italia", "Alemania", "Reino Unido", "Portugal", "Grecia", "Holanda"]
+                }
+            ]
+        };
+
+        // ===== CONSEJOS ALEATORIOS =====
+        const RANDOM_TIPS = [
+            "Observa el lenguaje corporal de los demás jugadores",
+            "Haz preguntas específicas sobre el lugar",
+            "Cuidado con quien responde con evasivas",
+            "El impostor a menudo repite lo que otros dicen",
+            "Presta atención a quien habla demasiado... o muy poco",
+            "Las pausas largas pueden indicar que alguien está inventando",
+            "Pregunta sobre detalles que solo alguien del lugar conocería",
+            "El impostor suele evitar hacer preguntas directas",
+            "Observa quien cambia de tema frecuentemente",
+            "La consistencia es clave: ¿sus respuestas tienen sentido juntas?"
+        ];
+
+        // ===== LOGROS =====
+        const ACHIEVEMENTS = [
+            { id: 'first_win', name: '🏆 Primera Victoria', description: 'Gana tu primera partida', requirement: () => GameState.stats.wins >= 1 },
+            { id: 'impostor_master', name: '😈 Maestro Impostor', description: 'Gana 5 veces como impostor', requirement: () => GameState.stats.impostorTimes >= 5 },
+            { id: 'detective_ace', name: '🔍 Detective Experto', description: 'Gana 3 veces como detective', requirement: () => GameState.stats.detectiveTimes >= 3 },
+            { id: 'veteran', name: '🎖️ Veterano', description: 'Juega 10 partidas', requirement: () => GameState.stats.gamesPlayed >= 10 },
+            { id: 'social_butterfly', name: '🦋 Mariposa Social', description: 'Juega con 10+ jugadores', requirement: () => GameState.players.length >= 10 }
+        ];
+
+        // ===== INICIALIZACIÓN =====
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSettings();
+            loadStats();
+            initServiceWorker();
+            initIntersectionObserver();
+            checkOnlineStatus();
+            
+            // Animación de entrada
+            setTimeout(() => {
+                document.querySelectorAll('.section-to-animate').forEach(el => {
+                    el.classList.add('is-visible');
+                });
+            }, 100);
+        });
+
+        // ===== SERVICE WORKER (PWA) =====
+        function initServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registrado', reg))
+                    .catch(err => console.log('Error al registrar SW', err));
+            }
+        }
+
+        // ===== INTERSECTION OBSERVER (Animaciones) =====
+        function initIntersectionObserver() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            document.querySelectorAll('.section-to-animate').forEach(el => {
+                observer.observe(el);
+            });
+        }
+
+        // ===== GESTIÓN DE PANTALLAS =====
+        function showScreen(screenId) {
+            // Ocultar todas las pantallas
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+
+            // Mostrar la pantalla solicitada
+            const targetScreen = document.getElementById(screenId);
+            if (targetScreen) {
+                targetScreen.classList.add('active');
+                GameState.currentScreen = screenId;
+
+                // Reanimar elementos
+                setTimeout(() => {
+                    targetScreen.querySelectorAll('.section-to-animate').forEach(el => {
+                        el.classList.remove('is-visible');
+                        setTimeout(() => el.classList.add('is-visible'), 50);
+                    });
+                }, 50);
+
+                playSound('click');
+            }
+        }
+
+        // ===== SELECCIÓN DE MODO DE JUEGO =====
+        function selectGameMode(mode) {
+            GameState.gameMode = mode;
+            playSound('select');
+            createParticles(event);
+            showScreen('screen-players');
+        }
+
+        // ===== ACTUALIZAR CONTADOR DE JUGADORES =====
+        function updatePlayerCount(count) {
+            document.getElementById('player-count-display').textContent = count;
+            
+            // Ajustar límite de impostores según jugadores
+            const impostorInput = document.getElementById('impostor-count');
+            const maxImpostors = Math.floor(count / 3);
+            impostorInput.max = maxImpostors;
+            if (parseInt(impostorInput.value) > maxImpostors) {
+                impostorInput.value = maxImpostors;
+            }
+        }
+
+        // ===== INICIAR PARTIDA =====
+        async function startGame() {
+            const playerCount = parseInt(document.getElementById('player-count').value);
+            const impostorCount = parseInt(document.getElementById('impostor-count').value);
+            const roundTime = parseInt(document.getElementById('round-time').value);
+            const scenarioType = document.getElementById('scenario-type').value;
+            GameState.geminiApiKey = document.getElementById('gemini-api-key').value;
+
+            // Validaciones
+            if (impostorCount >= playerCount) {
+                showToast('¡Demasiados impostores!', 'error');
+                return;
+            }
+
+            if (scenarioType === 'ai' && !GameState.geminiApiKey) {
+                showToast('Necesitas una API Key de Gemini para usar IA', 'warning');
+                return;
+            }
+
+            // Preparar jugadores
+            GameState.players = [];
+            for (let i = 1; i <= playerCount; i++) {
+                GameState.players.push({
+                    id: i,
+                    number: i,
+                    role: null,
+                    isImpostor: false,
+                    isDetective: false,
+                    votes: 0,
+                    eliminated: false
+                });
+            }
+
+            // Generar escenario
+            showToast('Generando escenario...', 'info');
+            
+            if (scenarioType === 'ai') {
+                await generateScenarioWithAI(playerCount, impostorCount);
+            } else {
+                generatePresetScenario(playerCount, impostorCount);
+            }
+
+            // Asignar roles
+            assignRoles(impostorCount);
+
+            // Configurar tiempo
+            GameState.timeRemaining = roundTime * 60;
+
+            // Iniciar distribución de roles
+            GameState.currentPlayerIndex = 0;
+            showScreen('screen-roles');
+            updatePlayerDisplay();
+
+            playSound('start');
+            createParticles(event);
+        }
+
+        // ===== GENERAR ESCENARIO CON IA (GEMINI) =====
+        async function generateScenarioWithAI(playerCount, impostorCount) {
+            try {
+                const prompt = `Genera un escenario único para un juego de deducción social con ${playerCount} jugadores y ${impostorCount} impostor(es). 
+                
+Formato JSON:
+{
+    "location": "Nombre de la ubicación específica",
+    "description": "Descripción breve del lugar",
+    "roles": [
+        {"name": "Nombre del rol", "description": "Descripción específica"}
+    ],
+    "tips": ["Consejo 1", "Consejo 2", "Consejo 3"]
+}
+
+IMPORTANTE: 
+- La ubicación debe ser específica y creativa
+- Cada rol debe tener una descripción única que lo diferencie
+- Los roles deben ser apropiados para la ubicación
+- Genera exactamente ${playerCount - impostorCount} roles (sin contar al impostor)
+- Los consejos deben ayudar a los civiles a identificar al impostor`;
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GameState.geminiApiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{ text: prompt }]
+                        }]
+                    })
+                });
+
+                if (!response.ok) throw new Error('Error en la API de Gemini');
+
+                const data = await response.json();
+                const text = data.candidates[0].content.parts[0].text;
+                
+                // Extraer JSON del texto
+                const jsonMatch = text.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    GameState.scenario = JSON.parse(jsonMatch[0]);
+                    showToast('¡Escenario generado con IA!', 'success');
+                } else {
+                    throw new Error('No se pudo parsear el JSON');
+                }
+            } catch (error) {
+                console.error('Error generando con IA:', error);
+                showToast('Error con IA, usando escenario predefinido', 'warning');
+                generatePresetScenario(playerCount, impostorCount);
+            }
+        }
+
+        // ===== GENERAR ESCENARIO PREDEFINIDO =====
+        function generatePresetScenario(playerCount, impostorCount) {
+            const scenarios = PRESET_SCENARIOS[GameState.gameMode] || PRESET_SCENARIOS.classic;
+            const randomScenario = scenarios[Math.floor(Math.random() * scenarios.length)];
+            
+            GameState.scenario = {
+                location: randomScenario.location,
+                description: randomScenario.description || 'Un lugar interesante',
+                roles: randomScenario.roles.slice(0, playerCount - impostorCount),
+                tips: randomScenario.tips || RANDOM_TIPS.slice(0, 3),
+                keywords: randomScenario.keywords || []
+            };
+
+            showToast('Escenario cargado', 'success');
+        }
+
+        // ===== ASIGNAR ROLES =====
+        function assignRoles(impostorCount) {
+            // Mezclar jugadores
+            const shuffled = [...GameState.players].sort(() => Math.random() - 0.5);
+
+            // Asignar impostores
+            GameState.impostors = [];
+            for (let i = 0; i < impostorCount; i++) {
+                shuffled[i].isImpostor = true;
+                shuffled[i].role = {
+                    name: "Impostor",
+                    description: "Descubre la ubicación sin ser detectado. No conoces el lugar exacto."
+                };
+                GameState.impostors.push(shuffled[i]);
+            }
+
+            // Asignar detective (si es modo detective)
+            if (GameState.gameMode === 'detective' && shuffled.length > impostorCount) {
+                shuffled[impostorCount].isDetective = true;
+                shuffled[impostorCount].role = {
+                    name: "Detective",
+                    description: `Conoces todos los roles. La ubicación es: ${GameState.scenario.location}`
+                };
+                GameState.detective = shuffled[impostorCount];
+            }
+
+            // Asignar roles normales
+            let roleIndex = 0;
+            for (let i = (GameState.gameMode === 'detective' ? impostorCount + 1 : impostorCount); i < shuffled.length; i++) {
+                if (GameState.gameMode === 'chameleon') {
+                    shuffled[i].role = {
+                        name: "Civil",
+                        description: `Tema: ${GameState.scenario.topic}. Palabra clave: ${GameState.scenario.keywords[roleIndex % GameState.scenario.keywords.length]}`
+                    };
+                } else {
+                    shuffled[i].role = GameState.scenario.roles[roleIndex % GameState.scenario.roles.length];
+                }
+                roleIndex++;
+            }
+        }
+
+        // ===== ACTUALIZAR DISPLAY DE JUGADOR =====
+        function updatePlayerDisplay() {
+            const currentPlayer = GameState.players[GameState.currentPlayerIndex];
+            document.getElementById('current-player-number').textContent = currentPlayer.number;
+            document.getElementById('reveal-role-btn').classList.remove('hidden');
+            document.getElementById('role-display').classList.add('hidden');
+        }
+
+        // ===== REVELAR ROL =====
+        function revealRole() {
+            const currentPlayer = GameState.players[GameState.currentPlayerIndex];
+            const roleDisplay = document.getElementById('role-display');
+            const roleIcon = document.getElementById('role-icon');
+            const roleName = document.getElementById('role-name');
+            const roleInfo = document.getElementById('role-info');
+
+            // Configurar visualización según el rol
+            if (currentPlayer.isImpostor) {
+                roleIcon.textContent = '🎭';
+                roleName.textContent = '🔴 Eres el IMPOSTOR';
+                roleName.style.color = 'var(--impostor-color)';
+                roleInfo.innerHTML = `
+                    <p style="margin-bottom: 1rem;"><strong>Tu misión:</strong> Descubre cuál es la ubicación secreta sin que te detecten.</p>
+                    <p style="margin-bottom: 1rem;"><strong>Estrategia:</strong> Haz preguntas generales, observa las respuestas de los demás y trata de encajar.</p>
+                    <p><strong>¡Cuidado!</strong> Si te descubren, pierdes.</p>
+                `;
+            } else if (currentPlayer.isDetective) {
+                roleIcon.textContent = '🔍';
+                roleName.textContent = '🔵 Eres el DETECTIVE';
+                roleName.style.color = 'var(--detective-color)';
+                roleInfo.innerHTML = `
+                    <p style="margin-bottom: 1rem;"><strong>Ubicación:</strong> ${GameState.scenario.location}</p>
+                    <p style="margin-bottom: 1rem;"><strong>Tu rol:</strong> ${currentPlayer.role.description}</p>
+                    <p style="margin-bottom: 1rem;"><strong>Misión:</strong> Guía sutilmente a los civiles para identificar al impostor.</p>
+                    <p><strong>Cuidado:</strong> No reveles que eres detective ni des pistas demasiado obvias.</p>
+                `;
+            } else {
+                roleIcon.textContent = '👤';
+                roleName.textContent = '🟢 Eres un CIVIL';
+                roleName.style.color = 'var(--civil-color)';
+                roleInfo.innerHTML = `
+                    <p style="margin-bottom: 1rem;"><strong>Ubicación:</strong> ${GameState.scenario.location}</p>
+                    <p style="margin-bottom: 1rem;"><strong>Tu rol:</strong> ${currentPlayer.role.name}</p>
+                    <p style="margin-bottom: 1rem;"><strong>Descripción:</strong> ${currentPlayer.role.description}</p>
+                    <p><strong>Misión:</strong> Identifica quién no pertenece a este lugar.</p>
+                `;
+            }
+
+            // Mostrar con animación
+            document.getElementById('reveal-role-btn').classList.add('hidden');
+            roleDisplay.classList.remove('hidden');
+            playSound('reveal');
+            createParticles(event);
+        }
+
+        // ===== SIGUIENTE JUGADOR =====
+        function nextPlayer() {
+            GameState.currentPlayerIndex++;
+            
+            if (GameState.currentPlayerIndex < GameState.players.length) {
+                updatePlayerDisplay();
+                playSound('click');
+            } else {
+                // Todos los jugadores han visto sus roles
+                startGameTimer();
+                showScreen('screen-game');
+                displayScenarioInfo();
+                displayPlayersList();
+                showRandomTip();
+            }
+        }
+
+        // ===== INICIAR TEMPORIZADOR =====
+        function startGameTimer() {
+            clearInterval(GameState.timer);
+            
+            GameState.timer = setInterval(() => {
+                GameState.timeRemaining--;
+                updateTimerDisplay();
+
+                // Avisos de tiempo
+                if (GameState.timeRemaining === 60) {
+                    showToast('¡Último minuto!', 'warning');
+                    playSound('warning');
+                }
+
+                if (GameState.timeRemaining <= 0) {
+                    clearInterval(GameState.timer);
+                    showToast('¡Tiempo agotado!', 'error');
+                    playSound('timeup');
+                    showScreen('screen-voting');
+                }
+            }, 1000);
+        }
+
+        // ===== ACTUALIZAR DISPLAY DEL TEMPORIZADOR =====
+        function updateTimerDisplay() {
+            const minutes = Math.floor(GameState.timeRemaining / 60);
+            const seconds = GameState.timeRemaining % 60;
+            const display = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('timer-display').textContent = display;
+
+            // Cambiar color si queda poco tiempo
+            const timerEl = document.getElementById('timer-display');
+            if (GameState.timeRemaining <= 60) {
+                timerEl.style.color = 'var(--error-color)';
+                if (GameState.timeRemaining % 2 === 0) {
+                    timerEl.classList.add('animate-pulse');
+                }
+            } else {
+                timerEl.style.color = 'var(--accent-color)';
+                timerEl.classList.remove('animate-pulse');
+            }
+        }
+
+        // ===== PAUSAR JUEGO =====
+        function pauseGame() {
+            if (GameState.timer) {
+                clearInterval(GameState.timer);
+                GameState.timer = null;
+                showToast('Juego pausado', 'info');
+                
+                // Cambiar botón a reanudar
+                const pauseBtn = document.querySelector('#screen-game button');
+                pauseBtn.textContent = '▶️ Reanudar';
+                pauseBtn.onclick = resumeGame;
+            }
+        }
+
+        // ===== REANUDAR JUEGO =====
+        function resumeGame() {
+            startGameTimer();
+            showToast('Juego reanudado', 'success');
+            
+            // Cambiar botón a pausar
+            const pauseBtn = document.querySelector('#screen-game button');
+            pauseBtn.textContent = '⏸️ Pausa';
+            pauseBtn.onclick = pauseGame;
+        }
+
+        // ===== MOSTRAR INFO DEL ESCENARIO =====
+        function displayScenarioInfo() {
+            const infoDiv = document.getElementById('scenario-info');
+            infoDiv.innerHTML = `
+                <p style="margin-bottom: 0.5rem;"><strong>Ubicación:</strong> ${GameState.scenario.location}</p>
+                ${GameState.scenario.description ? `<p><em>${GameState.scenario.description}</em></p>` : ''}
+            `;
+        }
+
+        // ===== MOSTRAR LISTA DE JUGADORES =====
+        function displayPlayersList() {
+            const listDiv = document.getElementById('players-list');
+            listDiv.innerHTML = '';
+
+            GameState.players.forEach(player => {
+                if (!player.eliminated) {
+                    const playerBadge = document.createElement('div');
+                    playerBadge.className = 'liquid-glass';
+                    playerBadge.style.cssText = 'padding: 1rem; text-align: center; cursor: pointer; transition: all 0.3s;';
+                    playerBadge.innerHTML = `
+                        <div style="font-size: 1.5rem; margin-bottom: 0.25rem;">👤</div>
+                        <div style="font-weight: 600;">J${player.number}</div>
+                    `;
+                    playerBadge.onmouseover = () => playerBadge.style.transform = 'scale(1.05)';
+                    playerBadge.onmouseout = () => playerBadge.style.transform = 'scale(1)';
+                    listDiv.appendChild(playerBadge);
+                }
+            });
+        }
+
+        // ===== MOSTRAR CONSEJO ALEATORIO =====
+        function showRandomTip() {
+            const tips = GameState.scenario.tips || RANDOM_TIPS;
+            const randomTip = tips[Math.floor(Math.random() * tips.length)];
+            document.getElementById('random-tip').textContent = randomTip;
+
+            // Cambiar consejo cada 30 segundos
+            setInterval(() => {
+                const newTip = tips[Math.floor(Math.random() * tips.length)];
+                document.getElementById('random-tip').textContent = newTip;
+            }, 30000);
+        }
+
+        // ===== PANTALLA DE VOTACIÓN =====
+        function showVotingScreen() {
+            showScreen('screen-voting');
+            const votingDiv = document.getElementById('voting-players');
+            votingDiv.innerHTML = '';
+            GameState.votes = {};
+
+            GameState.players.forEach(player => {
+                if (!player.eliminated) {
+                    const voteBtn = document.createElement('button');
+                    voteBtn.className = 'btn-secondary';
+                    voteBtn.style.cssText = 'width: 100%; padding: 1.25rem; font-size: 1.125rem;';
+                    voteBtn.textContent = `Jugador ${player.number}`;
+                    voteBtn.onclick = () => votePlayer(player.id, voteBtn);
+                    votingDiv.appendChild(voteBtn);
+                }
+            });
+        }
+
+        // ===== VOTAR JUGADOR =====
+        function votePlayer(playerId, buttonEl) {
+            GameState.votes[playerId] = (GameState.votes[playerId] || 0) + 1;
+            buttonEl.style.background = 'var(--accent-color)';
+            buttonEl.textContent = `Jugador ${playerId} (${GameState.votes[playerId]} votos)`;
+            playSound('vote');
+            createParticles(event);
+        }
+
+        // ===== MOSTRAR RESULTADOS DE VOTACIÓN =====
+        function showVotingResults() {
+            // Encontrar al jugador más votado
+            let maxVotes = 0;
+            let votedOutPlayer = null;
+
+            for (const [playerId, votes] of Object.entries(GameState.votes)) {
+                if (votes > maxVotes) {
+                    maxVotes = votes;
+                    votedOutPlayer = GameState.players.find(p => p.id === parseInt(playerId));
+                }
+            }
+
+            if (!votedOutPlayer) {
+                showToast('¡Empate! Nadie es eliminado', 'info');
+                showScreen('screen-game');
+                return;
+            }
+
+            // Determinar si ganaron
+            const impostorVotedOut = votedOutPlayer.isImpostor;
+            
+            // Actualizar estadísticas
+            GameState.stats.gamesPlayed++;
+            if (impostorVotedOut) {
+                GameState.stats.wins++;
+            }
+
+            // Guardar estadísticas
+            saveStats();
+
+            // Mostrar resultados
+            displayResults(impostorVotedOut, votedOutPlayer);
+        }
+
+        // ===== MOSTRAR PANTALLA DE RESULTADOS =====
+        function displayResults(civilsWon, votedPlayer) {
+            showScreen('screen-results');
+
+            const resultIcon = document.getElementById('result-icon');
+            const resultTitle = document.getElementById('result-title');
+            const resultSubtitle = document.getElementById('result-subtitle');
+
+            if (civilsWon) {
+                resultIcon.textContent = '🎉';
+                resultTitle.textContent = '¡Los Civiles Ganan!';
+                resultSubtitle.textContent = `Jugador ${votedPlayer.number} era el impostor`;
+                playSound('victory');
+            } else {
+                resultIcon.textContent = '😈';
+                resultTitle.textContent = '¡El Impostor Gana!';
+                resultSubtitle.textContent = `Jugador ${votedPlayer.number} era inocente`;
+                playSound('defeat');
+            }
+
+            // Resumen de la partida
+            const summaryDiv = document.getElementById('game-summary');
+            summaryDiv.innerHTML = `
+                <p><strong>Ubicación:</strong> ${GameState.scenario.location}</p>
+                <p><strong>Jugadores:</strong> ${GameState.players.length}</p>
+                <p><strong>Impostores:</strong> ${GameState.impostors.length}</p>
+                <p><strong>Jugador eliminado:</strong> ${votedPlayer.number}</p>
+                <p><strong>Votos recibidos:</strong> ${GameState.votes[votedPlayer.id] || 0}</p>
+            `;
+
+            // Revelar todos los roles
+            const rolesDiv = document.getElementById('roles-revealed');
+            rolesDiv.innerHTML = '';
+
+            GameState.players.forEach(player => {
+                const roleItem = document.createElement('div');
+                roleItem.style.cssText = 'padding: 0.75rem; background: var(--bg-secondary); border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center;';
+                
+                let roleLabel = '👤 Civil';
+                let roleColor = 'var(--civil-color)';
+                
+                if (player.isImpostor) {
+                    roleLabel = '🎭 Impostor';
+                    roleColor = 'var(--impostor-color)';
+                } else if (player.isDetective) {
+                    roleLabel = '🔍 Detective';
+                    roleColor = 'var(--detective-color)';
+                }
+
+                roleItem.innerHTML = `
+                    <span>Jugador ${player.number}</span>
+                    <span style="font-weight: 600; color: ${roleColor};">${roleLabel}</span>
+                `;
+                rolesDiv.appendChild(roleItem);
+            });
+
+            // Crear confeti si ganaron los civiles
+            if (civilsWon) {
+                createConfetti();
+            }
+
+            // Actualizar logros
+            checkAchievements();
+        }
+
+        // ===== REINICIAR JUEGO =====
+        function restartGame() {
+            GameState.currentPlayerIndex = 0;
+            GameState.votes = {};
+            clearInterval(GameState.timer);
+            showScreen('screen-game-mode');
+            playSound('click');
+        }
+
+        // ===== ESTADÍSTICAS =====
+        function loadStats() {
+            const saved = localStorage.getItem('imposterWhoStats');
+            if (saved) {
+                GameState.stats = JSON.parse(saved);
+                updateStatsDisplay();
+            }
+        }
+
+        function saveStats() {
+            localStorage.setItem('imposterWhoStats', JSON.stringify(GameState.stats));
+            updateStatsDisplay();
+        }
+
+        function updateStatsDisplay() {
+            document.getElementById('stat-games').textContent = GameState.stats.gamesPlayed;
+            document.getElementById('stat-wins').textContent = GameState.stats.wins;
+            document.getElementById('stat-impostor').textContent = GameState.stats.impostorTimes;
+            document.getElementById('stat-detective').textContent = GameState.stats.detectiveTimes;
+        }
+
+        function resetStats() {
+            if (confirm('¿Seguro que quieres borrar todas las estadísticas?')) {
+                GameState.stats = {
+                    gamesPlayed: 0,
+                    wins: 0,
+                    impostorTimes: 0,
+                    detectiveTimes: 0
+                };
+                saveStats();
+                showToast('Estadísticas borradas', 'success');
+            }
+        }
+
+        // ===== LOGROS =====
+        function checkAchievements() {
+            const achievementsDiv = document.getElementById('achievements-list');
+            achievementsDiv.innerHTML = '';
+
+            ACHIEVEMENTS.forEach(achievement => {
+                const unlocked = achievement.requirement();
+                const achievementEl = document.createElement('div');
+                achievementEl.style.cssText = `padding: 1rem; background: var(--bg-secondary); border-radius: 0.5rem; margin-bottom: 0.5rem; opacity: ${unlocked ? 1 : 0.4};`;
+                achievementEl.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="font-size: 2rem;">${unlocked ? achievement.name.split(' ')[0] : '🔒'}</div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600;">${achievement.name.split(' ').slice(1).join(' ')}</div>
+                            <div style="font-size: 0.875rem; color: var(--text-secondary);">${achievement.description}</div>
+                        </div>
+                    </div>
+                `;
+                achievementsDiv.appendChild(achievementEl);
+            });
+        }
+
+        // ===== CONFIGURACIÓN =====
+        function loadSettings() {
+            const saved = localStorage.getItem('imposterWhoSettings');
+            if (saved) {
+                GameState.settings = JSON.parse(saved);
+                applySettings();
+            }
+        }
+
+        function saveSettings() {
+            localStorage.setItem('imposterWhoSettings', JSON.stringify(GameState.settings));
+        }
+
+        function applySettings() {
+            // Aplicar tema
+            changeTheme(GameState.settings.theme);
+            document.getElementById('theme-selector').value = GameState.settings.theme;
+
+            // Aplicar sonido
+            document.getElementById('sound-toggle').checked = GameState.settings.soundEnabled;
+            document.getElementById('volume-slider').value = GameState.settings.volume;
+
+            // Aplicar accesibilidad
+            document.getElementById('grandma-toggle').checked = GameState.settings.grandmaMode;
+            document.getElementById('battery-toggle').checked = GameState.settings.batterySaver;
+            toggleGrandmaMode(GameState.settings.grandmaMode);
+            toggleBatterySaver(GameState.settings.batterySaver);
+        }
+
+        // ===== CAMBIAR TEMA =====
+        function changeTheme(theme) {
+            document.body.className = '';
+            
+            switch(theme) {
+                case 'light':
+                    document.body.classList.add('theme-light');
+                    break;
+                case 'neon':
+                    document.body.classList.add('theme-neon');
+                    break;
+                case 'halloween':
+                    document.body.classList.add('theme-halloween');
+                    break;
+                case 'christmas':
+                    document.body.classList.add('theme-christmas');
+                    break;
+                default:
+                    // tema oscuro por defecto
+                    break;
+            }
+
+            GameState.settings.theme = theme;
+            saveSettings();
+            playSound('click');
+        }
+
+        // ===== TOGGLE SONIDO =====
+        function toggleSound(enabled) {
+            GameState.settings.soundEnabled = enabled;
+            saveSettings();
+        }
+
+        function changeVolume(value) {
+            GameState.settings.volume = value;
+            saveSettings();
+        }
+
+        // ===== TOGGLE MODO ABUELA =====
+        function toggleGrandmaMode(enabled) {
+            if (enabled) {
+                document.body.classList.add('grandma-mode');
+            } else {
+                document.body.classList.remove('grandma-mode');
+            }
+            GameState.settings.grandmaMode = enabled;
+            saveSettings();
+        }
+
+        // ===== TOGGLE AHORRO DE BATERÍA =====
+        function toggleBatterySaver(enabled) {
+            if (enabled) {
+                document.body.classList.add('battery-saver');
+            } else {
+                document.body.classList.remove('battery-saver');
+            }
+            GameState.settings.batterySaver = enabled;
+            saveSettings();
+        }
+
+        // ===== SISTEMA DE SONIDO =====
+        const SOUNDS = {
+            click: [300, 0.05],
+            select: [400, 0.1],
+            start: [500, 0.15],
+            reveal: [600, 0.2],
+            vote: [350, 0.08],
+            victory: [700, 0.3],
+            defeat: [200, 0.3],
+            warning: [450, 0.15],
+            timeup: [250, 0.25]
+        };
+
+        function playSound(soundType) {
+            if (!GameState.settings.soundEnabled) return;
+
+            const [frequency, duration] = SOUNDS[soundType] || [400, 0.1];
+            
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.value = frequency;
+                oscillator.type = 'sine';
+
+                const volume = GameState.settings.volume / 100;
+                gainNode.gain.setValueAtTime(volume * 0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + duration);
+            } catch (error) {
+                console.log('Audio no soportado', error);
+            }
+        }
+
+        // ===== SISTEMA DE TOAST =====
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast liquid-glass ${type}`;
+            
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // ===== SISTEMA DE PARTÍCULAS =====
+        function createParticles(event) {
+            if (GameState.settings.batterySaver) return;
+            if (!event) return;
+
+            const colors = ['#0A84FF', '#30d158', '#ff453a', '#ffd60a', '#bf5af2'];
+            const particleCount = 15;
+
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = event.clientX + 'px';
+                particle.style.top = event.clientY + 'px';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                
+                document.body.appendChild(particle);
+
+                const angle = (Math.PI * 2 * i) / particleCount;
+                const velocity = 2 + Math.random() * 2;
+                const tx = Math.cos(angle) * velocity * 30;
+                const ty = Math.sin(angle) * velocity * 30;
+
+                particle.animate([
+                    { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+                    { transform: `translate(${tx}px, ${ty}px) scale(0)`, opacity: 0 }
+                ], {
+                    duration: 600,
+                    easing: 'cubic-bezier(0, .9, .57, 1)'
+                }).onfinish = () => particle.remove();
+            }
+        }
+
+        // ===== CONFETI =====
+        function createConfetti() {
+            if (GameState.settings.batterySaver) return;
+
+            const colors = ['#0A84FF', '#30d158', '#ff453a', '#ffd60a', '#bf5af2', '#ff375f', '#ffcc00'];
+            const confettiCount = 50;
+
+            for (let i = 0; i < confettiCount; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.style.cssText = `
+                        position: fixed;
+                        width: ${5 + Math.random() * 10}px;
+                        height: ${5 + Math.random() * 10}px;
+                        background: ${colors[Math.floor(Math.random() * colors.length)]};
+                        left: ${Math.random() * 100}vw;
+                        top: -20px;
+                        border-radius: ${Math.random() > 0.5 ? '50%' : '0'};
+                        pointer-events: none;
+                        z-index: 9999;
+                    `;
+                    
+                    document.body.appendChild(confetti);
+
+                    const tx = (Math.random() - 0.5) * 200;
+                    const rotation = Math.random() * 720;
+
+                    confetti.animate([
+                        { transform: 'translateY(0) rotate(0deg)', opacity: 1 },
+                        { transform: `translateY(${window.innerHeight + 100}px) translateX(${tx}px) rotate(${rotation}deg)`, opacity: 0 }
+                    ], {
+                        duration: 2000 + Math.random() * 1000,
+                        easing: 'cubic-bezier(.25, .46, .45, .94)'
+                    }).onfinish = () => confetti.remove();
+                }, i * 30);
+            }
+        }
+
+        // ===== ESTADO ONLINE/OFFLINE =====
+        function checkOnlineStatus() {
+            const updateStatus = () => {
+                GameState.isOnline = navigator.onLine;
+                const offlineIcon = document.getElementById('offline-icon');
+                
+                if (GameState.isOnline) {
+                    offlineIcon.classList.add('hidden');
+                } else {
+                    offlineIcon.classList.remove('hidden');
+                }
+            };
+
+            window.addEventListener('online', updateStatus);
+            window.addEventListener('offline', updateStatus);
+            updateStatus();
+        }
+
+        // ===== TUTORIAL =====
+        function showTutorial() {
+            showToast('Tutorial: ¡Muy pronto!', 'info');
+            // Aquí podrías implementar un tour guiado con una librería como intro.js
+        }
+
+        // ===== LIMPIAR CACHÉ =====
+        function clearCache() {
+            if (confirm('¿Seguro que quieres borrar toda la caché de la aplicación?')) {
+                if ('caches' in window) {
+                    caches.keys().then(names => {
+                        names.forEach(name => caches.delete(name));
+                    });
+                }
+                localStorage.clear();
+                showToast('Caché borrada. Recarga la página.', 'success');
+                setTimeout(() => location.reload(), 2000);
+            }
+        }
+
+        // ===== VIBRACIÓN (Haptic Feedback) =====
+        function vibrate(pattern = [50]) {
+            if ('vibrate' in navigator && GameState.settings.soundEnabled) {
+                navigator.vibrate(pattern);
+            }
+        }
+
+        // ===== DETECCIÓN DE GESTOS SWIPE =====
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            const swipeThreshold = 100;
+            const diff = touchStartX - touchEndX;
+
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    // Swipe izquierda
+                    console.log('Swipe left');
+                } else {
+                    // Swipe derecha (volver atrás)
+                    console.log('Swipe right');
+                    // Podrías implementar navegación hacia atrás
+                }
+            }
+        }
+
+        // ===== PREVENIR ZOOM NO DESEADO =====
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+
+        // ===== COMPARTIR RESULTADOS (Web Share API) =====
+        function shareResults() {
+            const shareData = {
+                title: 'Imposter Who?',
+                text: `¡Acabo de jugar una partida increíble! Estadísticas: ${GameState.stats.gamesPlayed} partidas, ${GameState.stats.wins} victorias.`,
+                url: window.location.href
+            };
+
+            if (navigator.share) {
+                navigator.share(shareData)
+                    .then(() => showToast('¡Compartido!', 'success'))
+                    .catch(err => console.log('Error compartiendo:', err));
+            } else {
+                // Fallback: copiar al portapapeles
+                navigator.clipboard.writeText(shareData.text + ' ' + shareData.url)
+                    .then(() => showToast('Copiado al portapapeles', 'success'))
+                    .catch(() => showToast('No se pudo compartir', 'error'));
+            }
+        }
+
+        // ===== ANIMACIÓN DE ESCRITURA (Typewriter) =====
+        function typewriterEffect(element, text, speed = 50) {
+            let i = 0;
+            element.textContent = '';
+            
+            function type() {
+                if (i < text.length) {
+                    element.textContent += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                }
+            }
+            
+            type();
+        }
+
+        // ===== SHAKE ANIMATION =====
+        function shakeElement(element) {
+            element.classList.add('animate-shake');
+            setTimeout(() => element.classList.remove('animate-shake'), 300);
+        }
+
+        // ===== INSTALACIÓN PWA =====
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Mostrar botón de instalación personalizado
+            showToast('¡Puedes instalar esta app!', 'info');
+        });
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        showToast('¡Gracias por instalar!', 'success');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+
+        // ===== DETECCIÓN DE DISPOSITIVO =====
+        function getDeviceType() {
+            const ua = navigator.userAgent;
+            if (/(tablet|ipad|playbook|silk)|(android(?!.*mobi))/i.test(ua)) {
+                return 'tablet';
+            }
+            if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(ua)) {
+                return 'mobile';
+            }
+            return 'desktop';
+        }
+
+        // ===== OPTIMIZACIÓN DE RENDIMIENTO =====
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // ===== DETECCIÓN DE BATERÍA =====
+        async function checkBatteryLevel() {
+            if ('getBattery' in navigator) {
+                try {
+                    const battery = await navigator.getBattery();
+                    
+                    if (battery.level < 0.2 && !battery.charging) {
+                        showToast('Batería baja. Activa el modo ahorro.', 'warning');
+                        
+                        if (confirm('¿Activar modo ahorro de batería?')) {
+                            toggleBatterySaver(true);
+                            document.getElementById('battery-toggle').checked = true;
+                        }
+                    }
+
+                    battery.addEventListener('levelchange', () => {
+                        console.log('Nivel de batería:', battery.level * 100 + '%');
+                    });
+                } catch (error) {
+                    console.log('API de batería no disponible');
+                }
+            }
+        }
+
+        // Verificar batería al cargar
+        checkBatteryLevel();
+
+        // ===== PREVENIR CIERRE ACCIDENTAL =====
+        window.addEventListener('beforeunload', (e) => {
+            if (GameState.currentScreen === 'screen-game' && GameState.timer) {
+                e.preventDefault();
+                e.returnValue = '¿Seguro que quieres salir? Hay una partida en curso.';
+                return e.returnValue;
+            }
+        });
+
+        // ===== FULLSCREEN API =====
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen()
+                    .then(() => showToast('Modo pantalla completa', 'success'))
+                    .catch(err => console.log('Error fullscreen:', err));
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // ===== MODO OSCURO AUTOMÁTICO =====
+        function detectSystemTheme() {
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                return 'dark';
+            }
+            return 'light';
+        }
+
+        // ===== EASTER EGGS =====
+        let konamiCode = [];
+        const konamiSequence = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+
+        document.addEventListener('keydown', (e) => {
+            konamiCode.push(e.key);
+            konamiCode = konamiCode.slice(-10);
+
+            if (konamiCode.join(',') === konamiSequence.join(',')) {
+                activateEasterEgg();
+            }
+        });
+
+        function activateEasterEgg() {
+            showToast('🎉 ¡Código secreto activado!', 'success');
+            createConfetti();
+            playSound('victory');
+            
+            // Modo neón automático
+            changeTheme('neon');
+        }
+
+        // ===== LOGS Y DEBUG =====
+        function logGameState() {
+            console.log('=== ESTADO DEL JUEGO ===');
+            console.log('Pantalla actual:', GameState.currentScreen);
+            console.log('Modo de juego:', GameState.gameMode);
+            console.log('Jugadores:', GameState.players);
+            console.log('Escenario:', GameState.scenario);
+            console.log('Impostores:', GameState.impostors);
+            console.log('Tiempo restante:', GameState.timeRemaining);
+            console.log('Estadísticas:', GameState.stats);
+            console.log('========================');
+        }
+
+        // Comando de consola para debug
+        window.debugGame = logGameState;
+
+        // ===== ANALÍTICAS (OPCIONAL) =====
+        function trackEvent(category, action, label) {
+            // Aquí podrías integrar Google Analytics, Plausible, etc.
+            console.log('Track:', category, action, label);
+        }
+
+        // ===== EXPORTAR/IMPORTAR DATOS =====
+        function exportGameData() {
+            const data = {
+                stats: GameState.stats,
+                settings: GameState.settings,
+                exportDate: new Date().toISOString()
+            };
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'imposter-who-data.json';
+            a.click();
+            URL.revokeObjectURL(url);
+
+            showToast('Datos exportados', 'success');
+        }
+
+        function importGameData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json';
+            
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        GameState.stats = data.stats || GameState.stats;
+                        GameState.settings = data.settings || GameState.settings;
+                        saveStats();
+                        saveSettings();
+                        applySettings();
+                        showToast('Datos importados', 'success');
+                    } catch (error) {
+                        showToast('Error al importar datos', 'error');
+                    }
+                };
+                
+                reader.readAsText(file);
+            };
+            
+            input.click();
+        }
+
+        // ===== MODO ESPECTADOR =====
+        function enableSpectatorMode() {
+            showToast('Modo espectador activado', 'info');
+            // Los espectadores pueden ver el timer y consejos pero no los roles
+        }
+
+        // ===== HISTORIAL DE PARTIDAS =====
+        function saveGameToHistory(gameData) {
+            const history = JSON.parse(localStorage.getItem('imposterWhoHistory') || '[]');
+            history.unshift({
+                date: new Date().toISOString(),
+                scenario: GameState.scenario.location,
+                players: GameState.players.length,
+                winner: gameData.winner,
+                duration: gameData.duration
+            });
+
+            // Mantener solo las últimas 20 partidas
+            if (history.length > 20) {
+                history.pop();
+            }
+
+            localStorage.setItem('imposterWhoHistory', JSON.stringify(history));
+        }
+
+        // ===== INICIALIZACIÓN FINAL =====
+        console.log('🕵️ Imposter Who? v1.0.0 cargado');
+        console.log('💡 Usa window.debugGame() para ver el estado del juego');
+
+    </script>
+</body>
+</html>
